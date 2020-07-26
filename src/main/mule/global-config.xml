@@ -7,7 +7,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd">
 	
 	
-	<http:request-config name="Access_Management_Config" doc:name="HTTP Request configuration" doc:id="c5b4e514-ca6b-4e1b-8455-cca385937f64" basePath="${anypoint.access.basePath}" >
+	<http:request-config name="Access_Management_Config" doc:name="HTTP Request configuration" doc:id="c5b4e514-ca6b-4e1b-8455-cca385937f64" basePath="${anypoint.access.basePath}" responseTimeout="60000">
 		<http:request-connection protocol="HTTPS" host="${anypoint.host}" port="${anypoint.port}" >
 			<http:authentication >
 				<http:basic-authentication username="${anypoint.username}" password="${anypoint.password}"/>
@@ -16,14 +16,11 @@ http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/cu
 	</http:request-config>
 	<http:request-config name="Cloudhub_Config" doc:name="HTTP Request configuration" doc:id="537ecb5c-106f-4e29-9762-32a8e50aa0d1" basePath="${anypoint.cloud.basePath}" >
 		<http:request-connection host="${anypoint.host}" port="${anypoint.port}" protocol="HTTPS">
-			<http:authentication >
-				<http:basic-authentication username="${anypoint.username}" password="${anypoint.password}" />
-			</http:authentication>
 		</http:request-connection>
 		<http:default-headers >
 		</http:default-headers>
 	</http:request-config>
-	<configuration-properties doc:name="Configuration properties" doc:id="2bc4339e-7120-4056-88dc-c468008d4354" file="properties/vanchiv-dev.yaml" />
+	<configuration-properties doc:name="Configuration properties" doc:id="2bc4339e-7120-4056-88dc-c468008d4354" file="vanchiv-sandbox.yaml" />
 	<s3:config name="Amazon_S3_Configuration" doc:name="Amazon S3 Configuration" doc:id="a6e45597-eabb-482d-8517-176ab1fd9779" >
 		<s3:basic-connection accessKey="${amazon.s3.accessKey}" secretKey="${amazon.s3.secretKey}" region="${amazon.s3.region}"/>
 	</s3:config>

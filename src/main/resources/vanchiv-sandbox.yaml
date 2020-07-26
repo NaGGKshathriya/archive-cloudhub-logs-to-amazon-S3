@@ -1,0 +1,15 @@
+anypoint:
+  host : "anypoint.mulesoft.com"
+  port: "443"
+  access.basePath: "/accounts"
+  cloud.basePath: "/cloudhub/api"
+  username: "your-anypoint-username"
+  password: "your-anypoint-username"
+app:
+  exp.api: "your deployed app name"
+  envId: "your environment id"
+amazon:
+  s3.accessKey: "AWS Access Key"
+  s3.secretKey: "AWS Secret Key"
+  s3.region: "your AWS region"
+  bucket.name: "your S3 bucket name "
