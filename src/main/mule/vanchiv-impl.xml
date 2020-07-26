@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:compression="http://www.mulesoft.org/schema/mule/compression"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/compression http://www.mulesoft.org/schema/mule/compression/current/mule-compression.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd">
+	
+	<flow name="logsArchiveFlow" doc:id="66cc8d30-1c15-4606-8ed7-bd01e9b144e0" >
+		<scheduler doc:name="Scheduler" doc:id="447e5604-78ac-4ba2-9283-279f60eed184" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="SECONDS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<ee:transform doc:name="set application , envid, s3 bucket names" doc:id="1adb528a-05b1-421e-baf3-839f4de00283" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"config": [{
+		"anypointApplication": "your-deployed-app-name",
+		"anypointEnvironmentId": "your-environment-id",
+		"amazonS3Bucket": "amazon-s3-bucket-name"
+	},
+	{
+		"anypointApplication": "your-deployed-app-name2",
+		"anypointEnvironmentId": "your-environment-id",
+		"amazonS3Bucket": "amazon-s3-bucket-name"
+	}]}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload.config]" doc:name="configCollection" doc:id="b1350768-a2e6-4a05-8ee7-39574217d9fe" variableName="configCollection"/>
+		<foreach doc:name="For Each" doc:id="f3a28d25-8ac6-45e8-ab3b-665d27d82e35" collection="#[vars.configCollection]">
+			<set-variable value="#[vars.configCollection[vars.counter - 1]]" doc:name="set config " doc:id="1b96f01e-8b84-4592-8c35-ca3dd5aba2e3" variableName="config"/>
+			<logger level="INFO" doc:name="log message" doc:id="6728754c-ad76-4817-9cc8-f5d6f057ee41" message='#["Archiving log files for CloudHub application:" ++ vars.config.anypointApplication ++ "to Amazon S3 bucket:" ++ vars.config.amazonS3Bucket]'/>
+			<flow-ref doc:name="archiveLogFile" doc:id="41b1f90e-9c77-4060-8e01-4c71a3e29a14" name="archiveLogFile"/>
+		</foreach>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="3496e9b7-a8b6-4803-ac15-057d4c1b4077" >
+				<ee:transform doc:name="Transform Message" doc:id="56438f1a-0a11-4485-bb91-ee45a202722b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: error.errorMessage.attributes.statusCode,
+	message: error.detailedDescription
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+error.errorMessage.attributes.statusCode default 500]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<!-- <sub-flow name="cloudhubLogin" doc:id="a89fa83e-9bf3-4bc4-96b8-cee0e39ebddc" >
+		<set-payload value="#[{
+	&quot;username&quot;: p('anypoint.username'),
+	&quot;password&quot;: p('anypoint.password')
+}]" doc:name="Set Payload" doc:id="f9138026-f6d9-4948-9e5d-efe853959550" mimeType="application/json"/>
+		<http:request method="POST" doc:name="Request" doc:id="a494a1d5-86b1-432e-a9cc-e03342713471" config-ref="HTTP_Request_configuration" path="/login"/>
+		<ee:transform doc:name="Transform Message" doc:id="a65268aa-a83f-4b93-84cb-79ccee436e6a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+-&#45;&#45;
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="payload.access_token" doc:name="access_token" doc:id="62a61278-6bd2-4888-b26d-e341a5fe6312" variableName="access_token"/>
+		<logger level="DEBUG" doc:name="Logger" doc:id="a8c7c371-c44e-4cb8-8398-63daf3d4e0ad" message="#[payload]"/>
+	</sub-flow> -->
+	<sub-flow name="cloudhubDeployments" doc:id="0a72f041-7227-493a-aa8a-362148ef05fa" >
+		<set-payload value="{}" doc:name="Set Payload" doc:id="21d61c0b-25d4-497d-bc03-ba47f94b9a68" />
+		<http:request method="GET" doc:name="get instances" doc:id="899ab3a6-394d-48f1-bbd1-37cd2936dfb6" config-ref="Cloudhub_Config" path="/v2/applications/{domain}/deployments">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"domain" : "vanchiv-cloud-logs",
+	"X-ANYPNT-ENV-ID" : "2ad45af2-6669-4571-af7d-220ef660f68d"
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"domain" : "vanchiv-cloud-logs"
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="transform to hashMap" doc:id="a3e03a65-2eca-45b5-aab9-b7d00e199b48">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload.data[0].instances]" doc:name="set instances" doc:id="5277cfe0-6cb6-4046-bbc1-04f27884d2d1" variableName="instances" />
+	</sub-flow>
+	<sub-flow name="cloudhubLogs" doc:id="4633d304-741a-4420-9fc3-b73d66b41079" >
+		<set-payload value="{}" doc:name="Set Payload" doc:id="adfb52bb-689a-493c-946e-b402e7d7e226" />
+		<ee:transform doc:name="Transform Message" doc:id="90a1c5d1-cdcc-4e1f-9818-218949dcb4ec" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="domain" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.config.anypointApplication]]></ee:set-variable>
+				<ee:set-variable variableName="instanceId" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.instanceId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request method="GET" doc:name="retrieve logs" doc:id="9cf3934a-91b6-420c-a7b9-c4fd4d0683dd" config-ref="Cloudhub_Config" path="/v2/applications/{domain}/instances/{instanceId}/log-file">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : "2ad45af2-6669-4571-af7d-220ef660f68d"
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"domain" : vars.config.anypointApplication,
+	"instanceId" : vars.instanceId
+}]]]></http:uri-params>
+		</http:request>
+		<compression:compress doc:name="compress and zip logs" doc:id="ddbc9bf8-299f-401d-a9af-a183c8062ace" >
+			<compression:compressor >
+				<compression:zip-compressor />
+			</compression:compressor>
+		</compression:compress>
+		<s3:create-object doc:name="create object in S3" doc:id="f1d470f4-fe46-4c2b-9e32-cdf568ce3e96" config-ref="Amazon_S3_Configuration" bucketName="#[vars.config.amazonS3Bucket]" key="#[vars.config.anypointApplication  ++ '-' ++ now() as String {format: &quot;y-MM-dd&quot;} ++ '.zip']"/>
+	</sub-flow>
+	<!-- <sub-flow name="cloudhubLogin" doc:id="f2c6883a-2099-4f62-9b76-5b6914a46b92" >
+		<http:request method="GET" doc:name="request access_token" doc:id="37978231-a68c-4846-b050-70fb5dfa94bf" config-ref="Cloudhub_Config"/>
+		<ee:transform doc:name="transform to hashMap" doc:id="65b266a1-c44e-4005-8fbf-01ab67b846ce" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+-&#45;&#45;
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload.access_token]" doc:name="set access_token" doc:id="22b8effd-d178-45b6-8bf2-6d5d1ec728a0" variableName="access_token"/>
+		<logger level="DEBUG" doc:name="Logger" doc:id="9a1a0ef5-559f-42d9-8378-3b2f4a264275" />
+	</sub-flow> -->
+	<sub-flow name="archiveLogFile" doc:id="7a16389d-f937-4a9b-8968-76233033f1d5" >
+		
+		<flow-ref doc:name="cloudhubDeployments" doc:id="b24b8832-38f6-41b8-ae11-bc056198835e" name="cloudhubDeployments"/>
+		<foreach doc:name="For Each" doc:id="f8175f29-951c-4d6d-a7ba-02bbcea33340" collection="#[vars.instances]" counterVariableName="instanceCounter">
+			<set-variable value="#[vars.instances[vars.instanceCounter - 1].instanceId]" doc:name="set instanceId" doc:id="904a8288-b3d7-4941-ba74-d449ac94571f" variableName="instanceId"/>
+			<flow-ref doc:name="cloudhubLogs" doc:id="76f7db29-82ed-4825-9eb6-46300cb141d9" name="cloudhubLogs"/>
+		</foreach>
+	</sub-flow>
+</mule>

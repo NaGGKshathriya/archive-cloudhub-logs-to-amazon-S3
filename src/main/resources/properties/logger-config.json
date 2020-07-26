@@ -1,0 +1,6 @@
+{
+	"config": [{
+		"anypointApplication": "vanchiv-cloud-logs",
+		"anypointEnvironmentId": "2ad45af2-6669-4571-af7d-220ef660f68d",
+		"amazonS3Bucket": "vanchiv-cloudhub-logs"
+	}]}
